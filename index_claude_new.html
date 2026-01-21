@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Value Investment Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .json-input {
+            width: 100%;
+            min-height: 200px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            resize: vertical;
+            background: #f8f9fa;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-download:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .download-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .dashboard {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-title::before {
+            content: '📊';
+            margin-right: 10px;
+            font-size: 24px;
+        }
+
+        .score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            margin: 10px auto;
+        }
+
+        .score-excellent { background: linear-gradient(135deg, #4ade80, #16a34a); }
+        .score-good { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+        .score-average { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .score-poor { background: linear-gradient(135deg, #f87171, #ef4444); }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        .risk-item {
+            background: #fef2f2;
+            border-left: 4px solid #f87171;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+        }
+
+        .risk-high { border-left-color: #ef4444; }
+        .risk-medium { border-left-color: #f59e0b; }
+        .risk-low { border-left-color: #10b981; }
+
+        .company-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .company-name {
+            font-size: 28px;
+            font-weight: 800;
+            color: #1a202c;
+            margin-bottom: 5px;
+        }
+
+        .company-symbol {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .summary-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .summary-score-item {
+            text-align: center;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .canvas-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        .investment-thesis {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .thesis-section {
+            margin-bottom: 20px;
+        }
+
+        .thesis-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #f1f5f9;
+        }
+
+        .moat-types {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .moat-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .revenue-streams {
+            margin-top: 15px;
+        }
+
+        .revenue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f8fafc;
+            margin: 5px 0;
+            border-radius: 8px;
+        }
+
+        .info-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .info-btn:hover {
+            background: #5a67d8;
+            transform: scale(1.1);
+        }
+
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip-content {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3748;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.4;
+            max-width: 300px;
+            width: max-content;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .tooltip-content::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2d3748 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltip-content {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .confidence-indicator {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+        }
+
+        .confidence-bar {
+            width: 40px;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-right: 5px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        .confidence-high { background: linear-gradient(135deg, #10b981, #059669); }
+        .confidence-medium { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .confidence-low { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .confidence-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .card {
+            opacity: 0;
+        }
+        
+        .score-circle {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* ===== PDF SAFE MODE ===== */
+.pdf-export *,
+.pdf-export *::before,
+.pdf-export *::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+}
+
+.pdf-export .card {
+    opacity: 1 !important;
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="text-align: center; color: #1a202c; margin-bottom: 10px;">📈 Value Investment Analysis Dashboard</h1>
+            <p style="text-align: center; color: #4a5568; font-size: 16px;">Comprehensive Company Analysis Tool for Indian Equities</p>
+        </div>
+
+        <div class="input-section">
+            <h3 style="margin-bottom: 15px; color: #2d3748;">Paste Annual Report Analysis JSON</h3>
+            <textarea id="jsonInput" class="json-input" placeholder='Paste the JSON output from your LLM analysis here...'></textarea>
+            <button id="analyzeBtn" class="btn-primary">Generate Analysis Dashboard</button>
+        </div>
+
+        <div class="download-container">
+            <button id="downloadBtn" class="btn-download">
+                <span>📄</span>
+                <span>Download as PDF</span>
+            </button>
+        </div>
+
+        <div id="dashboard" class="dashboard">
+            <!-- Dashboard content will be generated here -->
+        </div>
+    </div>
+
+    <script>
+        let analysisData = null;
+
+        $('#analyzeBtn').click(function() {
+            try {
+                const jsonText = $('#jsonInput').val().trim();
+                if (!jsonText) {
+                    alert('Please paste the JSON analysis data first.');
+                    return;
+                }
+                
+                analysisData = JSON.parse(jsonText);
+                generateDashboard(analysisData);
+                $('#dashboard').show();
+                $('#downloadBtn').show();
+                
+                // Smooth scroll to dashboard
+                $('html, body').animate({
+                    scrollTop: $('#dashboard').offset().top - 50
+                }, 1000);
+                
+            } catch (error) {
+                alert('Invalid JSON format. Please check your input and try again.\n\nError: ' + error.message);
+            }
+        });
+
+        $('#downloadBtn').click(async function() {
+            const btn = $(this);
+            const originalText = btn.html();
+            
+            try {
+                // Disable button and show loading state
+                btn.prop('disabled', true);
+                btn.html('<span>⏳</span><span>Generating PDF...</span>');
+                
+                const dashboard = document.getElementById('dashboard');
+                const companyName = analysisData.company_info.name.replace(/[^a-z0-9]/gi, '_');
+                const fileName = `${companyName}_Investment_Analysis.pdf`;
+                
+                // Clone the dashboard
+                const dashboardClone = dashboard.cloneNode(true);
+                
+                // Create wrapper with solid white background
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'absolute';
+                wrapper.style.left = '-9999px';
+                wrapper.style.top = '-9999px';
+                wrapper.style.width = '1100px';
+                wrapper.style.backgroundColor = '#ffffff';
+                wrapper.style.padding = '20px';
+                wrapper.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+                
+                // Set display for single column
+                dashboardClone.style.display = 'block';
+                dashboardClone.style.width = '100%';
+                dashboardClone.style.gap = '20px';
+                dashboardClone.style.gridTemplateColumns = '1fr';
+                dashboardClone.style.background = 'none';
+                
+                // Fix all cards to have solid backgrounds
+                dashboardClone.querySelectorAll('.card').forEach(card => {
+                    card.style.backgroundColor = '#ffffff';
+                    card.style.background = '#ffffff';
+                    card.style.opacity = '1';
+                });
+                
+                // Fix investment thesis to have solid background
+                dashboardClone.querySelectorAll('.investment-thesis').forEach(el => {
+                    el.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+                    el.style.opacity = '1';
+                });
+                
+                // Fix score circles
+                dashboardClone.querySelectorAll('.score-circle').forEach(circle => {
+                    circle.style.opacity = '1';
+                });
+                
+                // Remove tooltips from clone
+                dashboardClone.querySelectorAll('.tooltip-content').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                // Ensure all text is visible
+                dashboardClone.querySelectorAll('*').forEach(el => {
+                    el.style.opacity = '1';
+                    el.style.filter = 'none';
+                });
+                
+                wrapper.appendChild(dashboardClone);
+                wrapper.classList.add('pdf-export');
+                document.body.appendChild(wrapper);
+                
+                // Wait for rendering
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Capture with html2canvas
+               const canvas = await html2canvas(wrapper, {
+                    scale: 3,
+                    dpi: 300,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    windowWidth: 1100,
+                    windowHeight: wrapper.scrollHeight,
+                    logging: false
+                });
+
+                
+                // Remove wrapper
+                document.body.removeChild(wrapper);
+                
+                // Initialize jsPDF
+                const { jsPDF } = window.jspdf;
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+               const imgData = canvas.toDataURL('image/png');
+
+                
+                let position = 0;
+                let heightLeft = imgHeight;
+                
+                // Add first page
+                pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                // Add remaining pages
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                // Save PDF
+                pdf.save(fileName);
+                
+                // Reset button
+                btn.html('<span>✅</span><span>Downloaded Successfully!</span>');
+                setTimeout(() => {
+                    btn.html(originalText);
+                    btn.prop('disabled', false);
+                }, 2000);
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                alert('Error generating PDF: ' + error.message);
+                btn.html(originalText);
+                btn.prop('disabled', false);
+            }
+        });
+
+        function generateDashboard(data) {
+            const dashboard = $('#dashboard');
+            dashboard.empty();
+            
+            // Company Header
+            const headerHTML = `
+                <div class="card" style="grid-column: 1 / -1;">
+                    <div class="company-header">
+                        <div class="company-name">${data.company_info.name}</div>
+                        <div class="company-symbol">${data.company_info.symbol} | ${data.company_info.sector}</div>
+                        <div style="margin-top: 15px; color: #6b7280;">${data.company_info.industry} | ${data.company_info.market_cap_category}
+                            ${createInfoButton(data.company_info.analysis_reasoning)}
+                        </div>
+                    </div>
+                    <div class="summary-scores">
+                        <div class="summary-score-item">
+                            <div class="score-circle ${getScoreClass(data.summary_scores.business_quality)}">${data.summary_scores.business_quality}</div>
+                            <div style="font-weight: 600; color: #4a5568;">Business Quality</div>
+                        </div>
+                        <div class="summary-score-item">
+                            <div class="score-circle ${getScoreClass(data.summary_scores.management_quality)}">${data.summary_scores.management_quality}</div>
+                            <div style="font-weight: 600; color: #4a5568;">Management</div>
+                        </div>
+                        <div class="summary-score-item">
+                            <div class="score-circle ${getScoreClass(data.summary_scores.competitive_position)}">${data.summary_scores.competitive_position}</div>
+                            <div style="font-weight: 600; color: #4a5568;">Competitive Position</div>
+                        </div>
+                        <div class="summary-score-item">
+                            <div class="score-circle ${getScoreClass(data.summary_scores.growth_prospects)}">${data.summary_scores.growth_prospects}</div>
+                            <div style="font-weight: 600; color: #4a5568;">Growth Prospects</div>
+                        </div>
+                        <div class="summary-score-item">
+                            <div class="score-circle ${getScoreClass(data.summary_scores.financial_strength)}">${data.summary_scores.financial_strength}</div>
+                            <div style="font-weight: 600; color: #4a5568;">Financial Strength</div>
+                        </div>
+                        <div class="summary-score-item">
+                            <div class="score-circle ${getScoreClass(data.summary_scores.overall_investment_attractiveness)}">${data.summary_scores.overall_investment_attractiveness}</div>
+                            <div style="font-weight: 600; color: #4a5568;">Overall Score
+                                ${createConfidenceIndicator(data.summary_scores.confidence, data.summary_scores.low_confidence_reason)}
+                                ${createInfoButton(data.summary_scores.reasoning)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            dashboard.append(headerHTML);
+
+            // Business Model Card
+            const businessHTML = `
+                <div class="card">
+                    <div class="card-title">🏢 Business Model ${createConfidenceIndicator(data.business_model.confidence, data.business_model.low_confidence_reason)} ${createInfoButton(data.business_model.analysis_reasoning)}</div>
+                    <div style="margin-bottom: 20px; color: #4a5568; line-height: 1.6;">
+                        ${data.business_model.core_business_description}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Business Type:</span>
+                        <span class="metric-value">${data.business_model.business_model_type}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Scalability Score:</span>
+                        <span class="metric-value">${data.business_model.scalability_score}/10</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Cyclicality:</span>
+                        <span class="metric-value">${data.business_model.cyclicality}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Unit Economics:</span>
+                        <span class="metric-value">${data.business_model.unit_economics_health}</span>
+                    </div>
+                    <div class="revenue-streams">
+                        <h4 style="margin: 15px 0 10px 0; color: #2d3748;">Revenue Streams</h4>
+                        ${data.business_model.revenue_streams.map(stream => `
+                            <div class="revenue-item">
+                                <div>
+                                    <strong>${stream.stream_name}</strong>
+                                    ${createConfidenceIndicator(stream.confidence, stream.low_confidence_reason)}
+                                    ${createInfoButton(stream.reasoning)}
+                                    <br>
+                                    <small style="color: #6b7280;">${stream.growth_trend} | ${stream.predictability} Predictability</small>
+                                </div>
+                                <div style="font-size: 18px; font-weight: 700; color: #667eea;">${stream.percentage}%</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            dashboard.append(businessHTML);
+
+            // Competitive Moat Card
+            const moatHTML = `
+                <div class="card">
+                    <div class="card-title">🏰 Competitive Moat ${createConfidenceIndicator(data.competitive_moat.confidence, data.competitive_moat.low_confidence_reason)} ${createInfoButton(data.competitive_moat.analysis_reasoning)}</div>
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="score-circle ${getScoreClass(data.competitive_moat.overall_moat_strength)}">${data.competitive_moat.overall_moat_strength}</div>
+                        <div style="font-weight: 600; color: #4a5568;">Moat Strength</div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Market Position:</span>
+                        <span class="metric-value">${data.competitive_moat.competitive_position}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Market Share:</span>
+                        <span class="metric-value">${data.competitive_moat.market_share_trend}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Pricing Power:</span>
+                        <span class="metric-value">${data.competitive_moat.pricing_power}</span>
+                    </div>
+                    <div class="moat-types">
+                        ${data.competitive_moat.moat_types.map(moat => `
+                            <div class="moat-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                    <strong style="color: #2d3748;">${moat.type}</strong>
+                                    <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">${moat.strength}/10</span>
+                                </div>
+                                <div style="font-size: 13px; color: #6b7280; margin-bottom: 5px;">${moat.evidence}</div>
+                                <div style="font-size: 12px; color: #374151;">Durability: ${moat.durability}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            dashboard.append(moatHTML);
+
+            // Management Quality Card
+            const managementHTML = `
+                <div class="card">
+                    <div class="card-title">👥 Management Quality ${createConfidenceIndicator(data.management_quality.confidence, data.management_quality.low_confidence_reason)} ${createInfoButton(data.management_quality.analysis_reasoning)}</div>
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="score-circle ${getScoreClass(data.management_quality.overall_score)}">${data.management_quality.overall_score}</div>
+                        <div style="font-weight: 600; color: #4a5568;">Overall Score</div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Leadership Stability:</span>
+                        <span class="metric-value">${data.management_quality.leadership_stability}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Capital Allocation: 
+                            ${createConfidenceIndicator(data.management_quality.capital_allocation.confidence, data.management_quality.capital_allocation.low_confidence_reason)}
+                            ${createInfoButton(data.management_quality.capital_allocation.reasoning)}
+                        </span>
+                        <span class="metric-value">${data.management_quality.capital_allocation.score}/10</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">ROIC Trend:</span>
+                        <span class="metric-value">${data.management_quality.capital_allocation.roic_trend}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Transparency: ${createConfidenceIndicator(data.management_quality.transparency.confidence, data.management_quality.transparency.low_confidence_reason)} ${createInfoButton(data.management_quality.transparency.reasoning)}</span>
+                        <span class="metric-value">${data.management_quality.transparency.score}/10</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Strategic Vision: ${createConfidenceIndicator(data.management_quality.strategic_vision.confidence, data.management_quality.strategic_vision.low_confidence_reason)} </span>
+                        <span class="metric-value">${data.management_quality.strategic_vision.score}/10</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Governance Red Flags: ${createConfidenceIndicator(data.management_quality.governance_red_flags.confidence, data.management_quality.governance_red_flags.low_confidence_reason)} ${createInfoButton(data.management_quality.governance_red_flags.reasoning)}</span>
+                        <span class="metric-value" style="color: ${data.management_quality.governance_red_flags.flags === 'None' ? '#10b981' : '#ef4444'};">${data.management_quality.governance_red_flags.flags}</span>
+                    </div>
+                </div>
+            `;
+            dashboard.append(managementHTML);
+
+            // Industry Analysis Card
+            const industryHTML = `
+                <div class="card">
+                    <div class="card-title">🏭 Industry Analysis ${createConfidenceIndicator(data.industry_analysis.confidence, data.industry_analysis.low_confidence_reason)} ${createInfoButton(data.industry_analysis.analysis_reasoning)}</div>
+                    <div class="metric-row">
+                        <span class="metric-label">Growth Stage:</span>
+                        <span class="metric-value">${data.industry_analysis.industry_growth_stage}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Attractiveness:</span>
+                        <span class="metric-value">${data.industry_analysis.industry_attractiveness}/10</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Regulatory Environment:</span>
+                        <span class="metric-value">${data.industry_analysis.regulatory_environment}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Disruption Risk:</span>
+                        <span class="metric-value">${data.industry_analysis.technology_disruption_risk}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">TAM Growth:</span>
+                        <span class="metric-value">${data.industry_analysis.tam_growth_potential}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Entry Barriers:</span>
+                        <span class="metric-value">${data.industry_analysis.entry_barriers}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Growth Runway:</span>
+                        <span class="metric-value">${data.growth_prospects.estimated_growth_runway_years} years</span>
+                    </div>
+                </div>
+            `;
+            dashboard.append(industryHTML);
+
+            // Financial Health Card
+            const financialHTML = `
+                <div class="card">
+                    <div class="card-title">💰 Financial Health ${createConfidenceIndicator(data.financial_health.confidence, data.financial_health.low_confidence_reason)} ${createInfoButton(data.financial_health.analysis_reasoning)}</div>
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <div class="score-circle ${getScoreClass(data.financial_health.overall_score)}">${data.financial_health.overall_score}</div>
+                        <div style="font-weight: 600; color: #4a5568;">Financial Score</div>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Debt Levels:</span>
+                        <span class="metric-value">${data.financial_health.debt_levels}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Cash Generation:</span>
+                        <span class="metric-value">${data.financial_health.cash_generation}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Working Capital:</span>
+                        <span class="metric-value">${data.financial_health.working_capital_efficiency}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Earnings Quality: ${createInfoButton(data.financial_health.earnings_quality.reasoning)}</span>
+                        <span class="metric-value">${data.financial_health.earnings_quality.score}/10</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Recurring Earnings:</span>
+                        <span class="metric-value">${data.financial_health.earnings_quality.recurring_earnings_ratio}%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Financial Flexibility:</span>
+                        <span class="metric-value">${data.financial_health.financial_flexibility}</span>
+                    </div>
+                </div>
+            `;
+            dashboard.append(financialHTML);
+
+            // Growth Prospects Card
+            const growthHTML = `
+                <div class="card">
+                    <div class="card-title">📈 Growth Prospects ${createConfidenceIndicator(data.growth_prospects.confidence, data.growth_prospects.low_confidence_reason)} ${createInfoButton(data.growth_prospects.analysis_reasoning)}</div>
+                    <div class="metric-row">
+                        <span class="metric-label">Revenue Growth:</span>
+                        <span class="metric-value">${data.growth_prospects.revenue_growth_potential}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Margin Expansion:</span>
+                        <span class="metric-value">${data.growth_prospects.margin_expansion_potential}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Geographic Expansion:</span>
+                        <span class="metric-value">${data.growth_prospects.geographic_expansion}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Product Expansion:</span>
+                        <span class="metric-value">${data.growth_prospects.product_line_expansion}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Market Penetration:</span>
+                        <span class="metric-value">${data.growth_prospects.market_penetration_opportunity}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Growth Runway:</span>
+                        <span class="metric-value">${data.growth_prospects.estimated_growth_runway_years} years</span>
+                    </div>
+                </div>
+            `;
+            dashboard.append(growthHTML);
+
+            // Key Risks Card
+            const risksHTML = `
+                <div class="card">
+                    <div class="card-title">⚠️ Key Risks</div>
+                    ${data.key_risks.map(risk => `
+                        <div class="risk-item risk-${risk.probability.toLowerCase()}">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 8px;">
+                                <strong style="color: #1f2937;">${risk.risk_type} Risk</strong>
+                                <div style="margin-left: auto; display: flex; gap: 5px;">
+                                    <span class="tag" style="background: ${getRiskColor(risk.probability)};">P: ${risk.probability}</span>
+                                    <span class="tag" style="background: ${getRiskColor(risk.impact)};">I: ${risk.impact}</span>
+                                </div>
+                            </div>
+                            <div style="color: #4b5563; font-size: 14px; line-height: 1.4;">${risk.description}</div>
+                        </div>
+                    `).join('')}
+                    ${data.red_flags && data.red_flags.length > 0 ? `
+                        <div style="margin-top: 20px;">
+                            <h4 style="color: #dc2626; margin-bottom: 10px;">🚩 Red Flags</h4>
+                            ${data.red_flags.map(flag => `
+                                <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 10px; margin: 5px 0; border-radius: 4px; color: #7f1d1d;">
+                                    ${flag}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            dashboard.append(risksHTML);
+
+            // Investment Thesis Card (Full Width)
+            const thesisHTML = `
+                <div class="investment-thesis" style="grid-column: 1 / -1;">
+                    <h2 style="text-align: center; margin-bottom: 30px; font-size: 24px;">
+                        🎯 Investment Thesis ${createConfidenceIndicator(data.investment_thesis.confidence, data.investment_thesis.low_confidence_reason)} ${createInfoButton(data.investment_thesis.reasoning)}
+                    </h2>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                        <div class="thesis-section">
+                            <div class="thesis-title">📈 Bull Case</div>
+                            <div style="line-height: 1.6; color: #e2e8f0;">${data.investment_thesis.bull_case}</div>
+                        </div>
+                        
+                        <div class="thesis-section">
+                            <div class="thesis-title">📉 Bear Case</div>
+                            <div style="line-height: 1.6; color: #e2e8f0;">${data.investment_thesis.bear_case}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div class="thesis-section">
+                            <div class="thesis-title">🔑 Key Value Drivers</div>
+                            <div>
+                                ${data.investment_thesis.key_value_drivers.map(driver => `
+                                    <div style="background: rgba(255,255,255,0.1); padding: 8px 12px; margin: 5px 0; border-radius: 6px;">
+                                        ${driver}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="thesis-section">
+                            <div class="thesis-title">⏰ Catalyst Timeline</div>
+                            <div style="font-size: 18px; font-weight: 600; color: #f1f5f9;">${data.investment_thesis.catalyst_timeline}</div>
+                            <div style="margin-top: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 16px;">Buffett Score</span>
+                                    <span style="font-size: 24px; font-weight: 800; color: #fbbf24;">${data.investment_thesis.buffett_score}/10</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            dashboard.append(thesisHTML);
+
+            // Peer Comparison Card
+            if (data.peer_comparison && data.peer_comparison.key_competitors) {
+                const peerHTML = `
+                    <div class="card">
+                        <div class="card-title">🏆 Peer Comparison ${createConfidenceIndicator(data.peer_comparison.confidence, data.peer_comparison.low_confidence_reason)} ${createInfoButton(data.peer_comparison.analysis_reasoning)}</div>
+                        <div class="metric-row">
+                            <span class="metric-label">Relative Position:</span>
+                            <span class="metric-value">${data.peer_comparison.relative_positioning}</span>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <h4 style="color: #2d3748; margin-bottom: 10px;">Key Competitors</h4>
+                            ${data.peer_comparison.key_competitors.map(competitor => `
+                                <span class="tag">${competitor}</span>
+                            `).join('')}
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <h4 style="color: #2d3748; margin-bottom: 10px;">Competitive Advantages</h4>
+                            ${data.peer_comparison.competitive_advantages.map(advantage => `
+                                <div style="background: #f0f9ff; padding: 8px 12px; margin: 5px 0; border-radius: 6px; border-left: 3px solid #0ea5e9;">
+                                    ${advantage}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                dashboard.append(peerHTML);
+            }
+
+            // Add animations
+            setTimeout(() => {
+                $('.card').each(function(index) {
+                    $(this).css({
+                        'animation': 'slideInUp 0.6s ease forwards',
+                        'animation-delay': (index * 0.1) + 's'
+                    });
+                });
+                
+                $('.progress-fill').each(function() {
+                    const width = $(this).data('width') || 0;
+                    $(this).css('width', width + '%');
+                });
+
+                $('.confidence-fill').each(function() {
+                    const width = $(this).css('width');
+                    $(this).css('width', '0%');
+                    setTimeout(() => {
+                        $(this).css('width', width);
+                    }, 500 + (Math.random() * 1000));
+                });
+            }, 100);
+        }
+
+        function createInfoButton(reasoning) {
+            if (!reasoning) return '';
+            return `
+                <span class="tooltip">
+                    <span class="info-btn">i</span>
+                    <div class="tooltip-content">${reasoning}</div>
+                </span>
+            `;
+        }
+
+        function getScoreClass(score) {
+            if (score >= 8) return 'score-excellent';
+            if (score >= 6.5) return 'score-good';
+            if (score >= 5) return 'score-average';
+            return 'score-poor';
+        }
+
+        function getRiskColor(level) {
+            switch(level.toLowerCase()) {
+                case 'high': return '#dc2626';
+                case 'medium': return '#d97706';
+                case 'low': return '#059669';
+                default: return '#6b7280';
+            }
+        }
+
+        function createConfidenceIndicator(confidence, lowConfidenceReason) {
+            if (!confidence) return '';
+            
+            const confidencePercent = Math.round(confidence * 100);
+            const confidenceLevel = confidence >= 0.7 ? 'high' : confidence >= 0.5 ? 'medium' : 'low';
+            
+            return `
+                <span class="confidence-indicator">
+                    <div class="confidence-bar">
+                        <div class="confidence-fill confidence-${confidenceLevel}" style="width: ${confidencePercent}%"></div>
+                    </div>
+                    <span class="confidence-text">${confidencePercent}%</span>
+                    ${lowConfidenceReason ? createInfoButton(`Confidence: ${lowConfidenceReason}`) : ''}
+                </span>
+            `;
+        }
+    </script>
+</body>
+</html>
